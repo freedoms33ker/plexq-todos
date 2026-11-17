@@ -1,0 +1,31 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.log
+.env
+.env.test
+.env.local
+apps/web/src/routeTree.gen.ts
+apps/web/playwright-report/
+apps/web/test-results/
+.DS_Store
+
+# AI agent config (symlinked from plexq-ai-resources by bin/link-ai.sh) — .agents/plans/ stays tracked
+.claude
+.codex
+.agents/skills
+.agents/guidance
+.agents/languages
+.agents/frameworks
+.agents/bin
+.agents/cache
+.agents/omf
+.agents/project-tooling
+.agents/code-examples
+.agents/*.md
+.agents/plans/.active
+.agents/templates
+
+# Session files
+*.session.id

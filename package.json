@@ -1,0 +1,29 @@
+{
+  "name": "todo-app",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.28.13",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck && tsc -p tools/tsconfig.json",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @todo/web test:e2e",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "db:up": "docker compose up -d --wait",
+    "db:migrate": "pnpm --filter @todo/api db:migrate",
+    "db:migrate:test": "pnpm --filter @todo/api db:migrate:test",
+    "check:counterexamples": "node tools/counterexamples.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@types/node": "^24.10.0",
+    "turbo": "^2.11.11",
+    "typescript": "^6.0.3"
+  }
+}

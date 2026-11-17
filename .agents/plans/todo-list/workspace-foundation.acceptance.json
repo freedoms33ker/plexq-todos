@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "story": ".agents/plans/todo-list/workspace-foundation.md",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "criterion": "AC-01: `pnpm install` at the repo root installs all three workspaces, and every `package.json` declares `engines.node >=24` and the root declares `pnpm >=11`.",
+      "status": "satisfied",
+      "implementation": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "apps/api/package.json",
+        "apps/web/package.json",
+        "packages/contract/package.json"
+      ],
+      "verification": [
+        {
+          "command": "pnpm install --frozen-lockfile",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A clean lockfile install across the three workspace packages",
+          "assertions": "Install succeeds with no lockfile drift",
+          "observedResult": "Done in 567ms using pnpm v11.28.13"
+        },
+        {
+          "command": "python3 -c \"import json,glob;ps=['package.json']+glob.glob('apps/*/package.json')+glob.glob('packages/*/package.json');assert len(ps)==4;assert all(json.load(open(p))['engines']['node']=='>=24' for p in ps);assert json.load(open('package.json'))['engines']['pnpm']=='>=11';print('engines ok',len(ps))\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Every package.json in the workspace, root included",
+          "assertions": "engines.node is >=24 everywhere and the root declares pnpm >=11",
+          "observedResult": "engines ok 4"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-02",
+      "criterion": "AC-02: `pnpm typecheck` passes for every workspace with TypeScript `strict` and `allowImportingTsExtensions` enabled.",
+      "status": "satisfied",
+      "implementation": [
+        "tsconfig.base.json",
+        "apps/api/tsconfig.json",
+        "apps/web/tsconfig.json",
+        "packages/contract/tsconfig.json",
+        "tools/tsconfig.json"
+      ],
+      "verification": [
+        {
+          "command": "pnpm typecheck",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "All workspaces plus tools/ compiled by tsc",
+          "assertions": "Zero type errors",
+          "observedResult": "Tasks:    3 successful, 3 total"
+        },
+        {
+          "command": "python3 -c \"import json;c=json.load(open('tsconfig.base.json'))['compilerOptions'];assert c['strict'] and c['allowImportingTsExtensions'];print('strict ok')\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "The shared base tsconfig every workspace extends",
+          "assertions": "strict and allowImportingTsExtensions are true",
+          "observedResult": "strict ok"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-03",
+      "criterion": "AC-03: `pnpm lint` runs Biome with the rules from plexq `templates/typescript/biome.json` (no semicolons, double quotes, 140-column lines, `noExplicitAny`, `noConsole`) and reports zero errors.",
+      "status": "satisfied",
+      "implementation": [
+        "biome.json"
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Every TypeScript, TSX, JSON, and CSS file in the repo",
+          "assertions": "Biome reports zero errors",
+          "observedResult": "Checked 74 files in 54ms. No fixes applied."
+        },
+        {
+          "command": "python3 -c \"import json;b=json.load(open('biome.json'));f=b['javascript']['formatter'];r=b['linter']['rules'];assert f['semicolons']=='asNeeded' and f['quoteStyle']=='double' and b['formatter']['lineWidth']==140;assert r['suspicious']['noExplicitAny']=='error' and r['suspicious']['noConsole']=='error';print('biome rules ok')\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "The repo's biome.json",
+          "assertions": "Rules match plexq templates/typescript/biome.json",
+          "observedResult": "biome rules ok"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-04",
+      "criterion": "AC-04: `docker-compose.yml` runs PostgreSQL 18 and creates both the `todo` and `todo_test` databases.",
+      "status": "blocked",
+      "implementation": [
+        "docker-compose.yml",
+        "docker/init-test-db.sql"
+      ],
+      "verification": [
+        {
+          "command": "docker compose config --quiet",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "The compose file as Docker parses it",
+          "assertions": "Valid compose definition using image postgres:18 with the init script mounted",
+          "observedResult": "Valid: image postgres:18, POSTGRES_DB todo, docker/init-test-db.sql mounted at /docker-entrypoint-initdb.d. Separately, docker/init-test-db.sql executed on a fresh PostgreSQL 18.6 cluster produced databases todo and todo_test."
+        },
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/datastore/core/migrator.spec.ts -t \"AC-04\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A live PostgreSQL server reached through DATABASE_URL",
+          "assertions": "server_version_num is 180000 or higher",
+          "observedResult": "1 passed | 2 skipped (3) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        },
+        {
+          "command": "pnpm db:up && docker exec todo-app-postgres psql -U todo -d todo -tAc \"select string_agg(datname, ',' order by datname) from pg_database where datname like 'todo%'\"",
+          "ran": false,
+          "exitCode": null,
+          "definingInputProperty": "The real postgres:18 container started from docker-compose.yml on the developer's Mac",
+          "assertions": "Prints todo,todo_test",
+          "observedResult": "Not run: Docker Hub (registry-1.docker.io) is blocked from the build environment, so the container itself has not been started yet. Run this on the Mac, record the result, then set this criterion to satisfied."
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-05",
+      "criterion": "AC-05: `pnpm db:migrate` creates the `todo_item` table with `id uuid default uuidv7()`, `title text not null`, `notes text`, `is_completed`, `is_test_data`, `created_timestamp`, `updated_timestamp`, and `deleted_timestamp`, and running it a second time changes nothing.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/datastore/core/migrations/0001_create_todo_item.ts",
+        "apps/api/src/datastore/core/migrator.ts",
+        "apps/api/src/datastore/core/migrate.ts",
+        "apps/api/src/datastore/core/migrator.spec.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/datastore/core/migrator.spec.ts -t \"AC-05\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A brand-new, empty PostgreSQL 18 database created by the test",
+          "assertions": "First run applies 1_create_todo_item; second run applies nothing; all eight columns, types, nullability, and defaults match; ids are UUIDv7; blank titles rejected",
+          "observedResult": "2 passed | 1 skipped (3) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-06",
+      "criterion": "AC-06: `packages/contract` exports the `TodoAppApi` definition, the `TodoItem`, `CreateTodoRequest`, and `UpdateTodoRequest` schemas, and the `TodoNotFound` and `CsrfRejected` errors, and both `apps/api` and `apps/web` import from it.",
+      "status": "satisfied",
+      "implementation": [
+        "packages/contract/src/index.ts",
+        "packages/contract/src/api.ts",
+        "packages/contract/src/todo/todo.model.ts",
+        "packages/contract/src/todo/todo.api.ts",
+        "packages/contract/src/csrf/csrf.api.ts"
+      ],
+      "verification": [
+        {
+          "command": "python3 -c \"import re,glob;s=open('packages/contract/src/index.ts').read();names=['TodoAppApi','TodoItem','CreateTodoRequest','UpdateTodoRequest','TodoNotFound','CsrfRejected'];assert all(re.search(r'\\\\b'+n+r'\\\\b',s) for n in names);users=[f for f in glob.glob('apps/*/src/**/*.ts*',recursive=True) if '@todo/contract' in open(f).read()];assert any(u.startswith('apps/api') for u in users) and any(u.startswith('apps/web') for u in users);print('exports ok; importers',len(users))\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "The contract barrel file and every source file in apps/api and apps/web",
+          "assertions": "All six names are exported and both apps import @todo/contract",
+          "observedResult": "exports ok; importers 20"
+        }
+      ],
+      "explicitUserApproval": ""
+    }
+  ],
+  "testInventory": {
+    "commands": [
+      {
+        "command": "pnpm --filter @todo/api exec vitest run src/datastore/core/migrator.spec.ts",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "3 passed (3)"
+      },
+      {
+        "command": "pnpm --filter @todo/api test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "54 passed (54)"
+      },
+      {
+        "command": "pnpm --filter @todo/web test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "18 passed (18)"
+      },
+      {
+        "command": "pnpm test:e2e",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "9 passed (35.4s)"
+      }
+    ],
+    "excludedTests": [],
+    "unexpectedSkips": 0
+  },
+  "thirdPartyIntegration": {
+    "required": false,
+    "tests": []
+  },
+  "entryPoints": [],
+  "definitionAudit": {
+    "performed": true,
+    "auditor": "cold-main-agent",
+    "result": "passed",
+    "counterexampleChecks": [
+      {
+        "command": "node tools/counterexamples.ts --story=workspace-foundation",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "3/3 counterexamples proven for workspace-foundation"
+      }
+    ]
+  },
+  "qualityGate": {
+    "commands": [
+      {
+        "command": "pnpm lint",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Checked 74 files in 54ms. No fixes applied."
+      },
+      {
+        "command": "pnpm typecheck",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Tasks:    3 successful, 3 total"
+      }
+    ]
+  }
+}

@@ -1,0 +1,284 @@
+{
+  "version": 1,
+  "story": ".agents/plans/todo-list/todo-api.md",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "criterion": "AC-01: `POST /api/todos` with a valid title returns `201` and the created item with a UUIDv7 `id`, the trimmed `title`, `notes` (or `null`), `completed: false`, and ISO-8601 timestamps, and the row exists in `todo_item`.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/todo/todo.handlers.ts",
+        "apps/api/src/todo/todo.service.ts",
+        "apps/api/src/todo/todo.repository.ts",
+        "apps/api/src/todo/todo.transformers.ts",
+        "packages/contract/src/todo/todo.model.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-01\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "POST bodies with a padded title, and with notes",
+          "assertions": "201; UUIDv7 id; trimmed title; notes or null; completed false; ISO timestamps; stored row matches",
+          "observedResult": "2 passed | 25 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        },
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.transformers.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A stored todo_item row with known values",
+          "assertions": "Row maps to TodoItem with ISO timestamps and storage-only columns dropped",
+          "observedResult": "3 passed (3)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-02",
+      "criterion": "AC-02: `POST /api/todos` with a missing, empty, whitespace-only, or longer-than-200-character title returns `400` and writes no row.",
+      "status": "satisfied",
+      "implementation": [
+        "packages/contract/src/todo/todo.model.ts",
+        "apps/api/src/datastore/core/migrations/0001_create_todo_item.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-02\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Missing, empty, whitespace-only, 201-character, and non-string titles; plus a 200-character boundary title",
+          "assertions": "Each invalid body gets 400 and zero rows are created; exactly 200 characters is accepted",
+          "observedResult": "6 passed | 21 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-03",
+      "criterion": "AC-03: `GET /api/todos` returns every non-deleted item ordered oldest first, and `GET /api/todos/:id` returns that one item.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/todo/todo.repository.ts",
+        "apps/api/src/todo/todo.handlers.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-03\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Two live items created in order and one soft-deleted item",
+          "assertions": "List contains both live items oldest first and omits the deleted one; get by id returns the item",
+          "observedResult": "2 passed | 25 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-04",
+      "criterion": "AC-04: `PATCH /api/todos/:id` changes only the supplied fields (`title`, `notes`, `completed`), leaves the others unchanged, advances `updatedTimestamp`, and returns the updated item, and an invalid title returns `400` and changes nothing.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/todo/todo.service.ts",
+        "apps/api/src/todo/todo.repository.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-04\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "PATCH bodies supplying only completed; title plus notes:null; and an invalid title",
+          "assertions": "Only supplied fields change; updatedTimestamp advances; invalid title gets 400 with the row and updated_timestamp untouched",
+          "observedResult": "3 passed | 24 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        },
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.service.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "applyTodoUpdate with empty, partial, null-notes, and full requests",
+          "assertions": "Unsupplied fields kept; null clears notes; id and timestamps never change",
+          "observedResult": "4 passed (4)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-05",
+      "criterion": "AC-05: `DELETE /api/todos/:id` returns `204`, sets `deleted_timestamp` on the row without removing it, and the item no longer appears in the list or in a get by id.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/todo/todo.repository.ts",
+        "apps/api/src/todo/todo.service.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-05\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A live item deleted through the API",
+          "assertions": "204 with empty body; row still exists with deleted_timestamp set; absent from list; get returns 404",
+          "observedResult": "1 passed | 26 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-06",
+      "criterion": "AC-06: `GET`, `PATCH`, or `DELETE` for an id that does not exist or is already deleted returns `404` with a `TodoNotFound` body, and a malformed id returns `400`.",
+      "status": "satisfied",
+      "implementation": [
+        "packages/contract/src/todo/todo.model.ts",
+        "packages/contract/src/todo/todo.api.ts",
+        "apps/api/src/todo/todo.service.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-06\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A random unknown UUID, an already-deleted id, and the malformed id 'not-a-uuid' on GET, PATCH, and DELETE",
+          "assertions": "404 with {_tag: TodoNotFound, id} for unknown and deleted ids; 400 for the malformed id",
+          "observedResult": "7 passed | 20 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-07",
+      "criterion": "AC-07: A `POST`, `PATCH`, or `DELETE` request without an `x-csrf-token` header matching the `csrf_token` cookie returns `403` and changes nothing, and `GET /api/csrf` issues that token.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/csrf/csrf.middleware.ts",
+        "apps/api/src/csrf/csrf.handlers.ts",
+        "apps/api/src/csrf/csrf.ts",
+        "apps/api/src/server.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-07\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "POST, PATCH, and DELETE with no token, cookie only, and a mismatched header",
+          "assertions": "All 403 CsrfRejected; target row unchanged and no row created; reads allowed; /api/csrf issues an HttpOnly SameSite=Strict cookie and reuses a valid one",
+          "observedResult": "5 passed | 22 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        },
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/csrf/csrf.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Matching, missing, different, malformed, and empty token pairs",
+          "assertions": "Only identical well-formed tokens match; only state-changing methods require a token",
+          "observedResult": "14 passed (14)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-08",
+      "criterion": "AC-08: Integration tests run against a real PostgreSQL 18 database through a real HTTP server, create their data through a fixture provider registered with a `FixtureManager`, and clean up only the rows they created, by id.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/tests/fixture-manager.ts",
+        "apps/api/src/tests/todo-fixture.provider.ts",
+        "apps/api/src/tests/test-server.ts",
+        "apps/api/vitest.config.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/todo/todo.api.spec.ts -t \"AC-08\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A bystander row from another fixture manager next to a temporary row",
+          "assertions": "cleanUp removes only the temporary row by id; the bystander survives",
+          "observedResult": "1 passed | 26 skipped (27) (the skipped tests are the ones outside this -t filter, not skipped tests; the full-suite inventory run reports 0 skipped)"
+        },
+        {
+          "command": "pnpm --filter @todo/api test && psql postgres://todo:todo@localhost:5432/todo_test -tAc \"select count(*) from todo_item\" | grep -qx 0",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "The full API suite run against the shared todo_test database",
+          "assertions": "Every row the suite created is gone afterwards (count is 0)",
+          "observedResult": "54 passed (54)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-09",
+      "criterion": "AC-09: Log output is JSON from the default winston logger and every line carries an `env` field read from `ENV`.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/api/src/common/logger.ts",
+        "apps/api/src/config/app-config.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/api exec vitest run src/common/logger.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "ENV=qa, ENV unset, and an invalid ENV value",
+          "assertions": "Output lines are JSON with env=qa and annotations; unset defaults to local; invalid ENV is rejected",
+          "observedResult": "3 passed (3)"
+        }
+      ],
+      "explicitUserApproval": ""
+    }
+  ],
+  "testInventory": {
+    "commands": [
+      {
+        "command": "pnpm --filter @todo/api test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "54 passed (54)"
+      },
+      {
+        "command": "pnpm --filter @todo/web test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "18 passed (18)"
+      },
+      {
+        "command": "pnpm test:e2e",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "9 passed (36.3s)"
+      }
+    ],
+    "excludedTests": [],
+    "unexpectedSkips": 0
+  },
+  "thirdPartyIntegration": {
+    "required": false,
+    "tests": []
+  },
+  "entryPoints": [],
+  "definitionAudit": {
+    "performed": true,
+    "auditor": "cold-main-agent",
+    "result": "passed",
+    "counterexampleChecks": [
+      {
+        "command": "node tools/counterexamples.ts --story=todo-api",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "10/10 counterexamples proven for todo-api"
+      }
+    ]
+  },
+  "qualityGate": {
+    "commands": [
+      {
+        "command": "pnpm lint",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Checked 74 files in 62ms. No fixes applied."
+      },
+      {
+        "command": "pnpm typecheck",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Tasks:    3 successful, 3 total"
+      }
+    ]
+  }
+}

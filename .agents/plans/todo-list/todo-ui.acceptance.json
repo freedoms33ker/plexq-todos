@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "story": ".agents/plans/todo-list/todo-ui.md",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "criterion": "AC-01: Opening `http://localhost:5173` shows the TODO items loaded from the API, and an empty-state message when there are none.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/TodoPage.tsx",
+        "apps/web/src/todos/lib/todo-queries.ts",
+        "apps/web/src/common/lib/api-client.ts",
+        "apps/web/vite.config.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-01\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "An item seeded through the API, and an API returning an empty list",
+          "assertions": "The seeded item renders on load; the empty-state message renders for an empty list",
+          "observedResult": "2 passed (8.4s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-02",
+      "criterion": "AC-02: Entering a title (and optional notes) and pressing Add creates the item through the API and shows it without a page reload, and the Add button is disabled while the title is blank.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/components/TodoForm.tsx",
+        "apps/web/src/common/lib/api-client.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-02\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A blank and whitespace-only title, then a real title with notes",
+          "assertions": "Add stays disabled for blank input; the item appears with its notes; inputs clear; no navigation occurs; exactly one POST created",
+          "observedResult": "1 passed (6.5s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-03",
+      "criterion": "AC-03: Ticking an item's checkbox marks it completed and shows it struck through, unticking marks it active, and both persist through the API.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/components/TodoRow.tsx",
+        "apps/web/src/todos/lib/todo-queries.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-03\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A new item toggled on, reloaded, toggled off, reloaded",
+          "assertions": "Checked and struck through after completing, unchecked and not struck through after reopening, both surviving reloads",
+          "observedResult": "1 passed (10.9s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-04",
+      "criterion": "AC-04: Editing an item's title or notes and pressing Save persists the change, while Cancel or the Escape key discards it.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/components/TodoEditForm.tsx",
+        "apps/web/src/todos/components/TodoRow.tsx"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-04\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "An edit discarded with Cancel, one discarded with Escape, and one saved",
+          "assertions": "Discarded text never appears; saved title and notes persist across reload and the old title is gone",
+          "observedResult": "1 passed (9.0s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-05",
+      "criterion": "AC-05: Deleting an item removes it from the list once the API confirms the delete.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/components/TodoRow.tsx",
+        "apps/web/src/todos/lib/todo-queries.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-05\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "An item deleted through its delete button",
+          "assertions": "DELETE returns 204, then the row disappears and stays gone after reload",
+          "observedResult": "1 passed (8.1s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-06",
+      "criterion": "AC-06: The All, Active, and Completed filters show the matching items, and a counter shows how many items are still active.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/components/TodoFilterBar.tsx",
+        "apps/web/src/todos/lib/todo-filters.ts",
+        "apps/web/src/router.tsx"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-06\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "One completed and one active item under each filter",
+          "assertions": "Active, Completed, and All show exactly the matching items; URL carries the filter; the counter drops by one when an item completes",
+          "observedResult": "1 passed (7.2s)"
+        },
+        {
+          "command": "pnpm --filter @todo/web exec vitest run src/todos/lib/todo-filters.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Mixed completed/active lists, empty lists, and invalid filter values",
+          "assertions": "Filters select the right items in order; the count is correct; unknown filters fall back to all",
+          "observedResult": "13 passed (13)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-07",
+      "criterion": "AC-07: When an API call fails, the page shows a readable error message instead of failing silently.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/todos/TodoPage.tsx",
+        "apps/web/src/common/components/ErrorBanner.tsx",
+        "apps/web/src/common/lib/api-client.ts",
+        "apps/web/src/i18n.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec playwright test -g \"AC-07\"",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "A POST that fails at the network level, and a PATCH on an item deleted elsewhere",
+          "assertions": "An alert shows the network message and can be dismissed; a not-found alert shows and the stale row disappears",
+          "observedResult": "2 passed (9.6s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-08",
+      "criterion": "AC-08: All user-facing text, including aria-labels and placeholders, comes from i18next translation keys, and every icon-only button has an aria-label.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/src/i18n.ts",
+        "apps/web/src/i18n-coverage.spec.ts",
+        "apps/web/src/common/components/ui/button.tsx"
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @todo/web exec vitest run src/i18n-coverage.spec.ts",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Every .tsx file under apps/web/src",
+          "assertions": "Every t() key exists; no literal aria-label/placeholder/title; no literal JSX text; every icon-only Button has aria-label",
+          "observedResult": "5 passed (5)"
+        }
+      ],
+      "explicitUserApproval": ""
+    },
+    {
+      "id": "AC-09",
+      "criterion": "AC-09: A Playwright end-to-end test drives AC-01 through AC-06 in a real browser against the real API and database.",
+      "status": "satisfied",
+      "implementation": [
+        "apps/web/e2e/todos.e2e.ts",
+        "apps/web/e2e/todo-fixtures.ts",
+        "apps/web/playwright.config.ts"
+      ],
+      "verification": [
+        {
+          "command": "pnpm test:e2e && psql postgres://todo:todo@localhost:5432/todo_test -tAc \"select count(*) from todo_item\" | grep -qx 0",
+          "ran": true,
+          "exitCode": 0,
+          "definingInputProperty": "Chromium driving the real Vite app, real API, and real todo_test database",
+          "assertions": "All 9 e2e tests pass and every row they created is removed afterwards",
+          "observedResult": "9 passed (37.2s)"
+        }
+      ],
+      "explicitUserApproval": ""
+    }
+  ],
+  "testInventory": {
+    "commands": [
+      {
+        "command": "pnpm --filter @todo/api test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "54 passed (54)"
+      },
+      {
+        "command": "pnpm --filter @todo/web test",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "18 passed (18)"
+      },
+      {
+        "command": "pnpm test:e2e",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "9 passed (37.0s)"
+      }
+    ],
+    "excludedTests": [],
+    "unexpectedSkips": 0
+  },
+  "thirdPartyIntegration": {
+    "required": false,
+    "tests": []
+  },
+  "entryPoints": [],
+  "definitionAudit": {
+    "performed": true,
+    "auditor": "cold-main-agent",
+    "result": "passed",
+    "counterexampleChecks": [
+      {
+        "command": "node tools/counterexamples.ts --story=todo-ui",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "5/5 counterexamples proven for todo-ui"
+      }
+    ]
+  },
+  "qualityGate": {
+    "commands": [
+      {
+        "command": "pnpm lint",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Checked 74 files in 71ms. No fixes applied."
+      },
+      {
+        "command": "pnpm typecheck",
+        "ran": true,
+        "exitCode": 0,
+        "observedResult": "Tasks:    3 successful, 3 total"
+      }
+    ]
+  }
+}

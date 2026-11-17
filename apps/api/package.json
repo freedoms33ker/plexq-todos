@@ -1,0 +1,31 @@
+{
+  "name": "@todo/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env src/main.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "db:migrate": "node --env-file-if-exists=.env src/datastore/core/migrate.ts",
+    "db:migrate:test": "node --env-file-if-exists=.env.test src/datastore/core/migrate.ts"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.97.3",
+    "@effect/platform-node": "^0.108.4",
+    "@effect/sql": "^0.52.2",
+    "@effect/sql-pg": "^0.53.1",
+    "@todo/contract": "workspace:*",
+    "effect": "^3.22.4",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  }
+}
